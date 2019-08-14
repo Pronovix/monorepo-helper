@@ -1,0 +1,38 @@
+{
+    "name": "pronovix/monorepo-helper",
+    "type": "composer-plugin",
+    "description": "Monorepo helper Composer plugin.",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "composer-plugin-api": "^1.1",
+        "pronovix/composer-logger": "^2.0",
+        "symfony/finder": "^3.4 || ^4.0",
+        "vierbergenlars/php-semver": "^3.0.2"
+    },
+    "require-dev": {
+        "composer/composer": "^1.7.3",
+        "friendsofphp/php-cs-fixer": "^2.15",
+        "vimeo/psalm": "^3.4"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "2.x-dev"
+        },
+        "class": "Pronovix\\MonorepoHelper\\Composer\\Plugin"
+    },
+    "autoload": {
+        "psr-4": {
+            "Pronovix\\MonorepoHelper\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "analyze": "psalm --config=psalm.xml.dist --show-info=false --stats",
+        "check-style": "php-cs-fixer fix --dry-run",
+        "fix-style": "php-cs-fixer fix"
+    }
+}

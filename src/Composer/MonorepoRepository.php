@@ -1,0 +1,183 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Copyright (C) 2019 PRONOVIX GROUP BVBA.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *  *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *  *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+ * USA.
+ */
+
+namespace Pronovix\MonorepoHelper\Composer;
+
+use Composer\Json\JsonFile;
+use Composer\Package\Loader\LoaderInterface;
+use Composer\Repository\ArrayRepository;
+use Composer\Util\ProcessExecutor;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Finder\Finder;
+
+/**
+ * Repository plugin that discovers packages inside a monorepo.
+ */
+final class MonorepoRepository extends ArrayRepository
+{
+    /**
+     * Absolute root path of the monorepo.
+     *
+     * @var string
+     */
+    private $monorepoRoot;
+
+    /**
+     * @var \Composer\Util\ProcessExecutor
+     */
+    private $process;
+
+    /**
+     * @var \Composer\Package\Loader\LoaderInterface
+     */
+    private $loader;
+
+    /**
+     * @var bool
+     */
+    private $enabled = true;
+
+    /**
+     * @var \Pronovix\MonorepoHelper\Composer\Logger|\Psr\Log\LoggerInterface
+     */
+    private $logger;
+
+    /**
+     * @var \Pronovix\MonorepoHelper\Composer\PluginConfiguration
+     */
+    private $configuration;
+    /**
+     * @var \Pronovix\MonorepoHelper\Composer\MonorepoVersionGuesser
+     */
+    private $monorepoVersionGuesser;
+
+    /**
+     * MonorepoRepository constructor.
+     *
+     * @param string $monorepoRoot
+     * @param \Pronovix\MonorepoHelper\Composer\PluginConfiguration $configuration
+     * @param \Composer\Package\Loader\LoaderInterface $loader
+     * @param \Composer\Util\ProcessExecutor $process
+     * @param \Pronovix\MonorepoHelper\Composer\MonorepoVersionGuesser $monorepoVersionGuesser
+     * @param \Psr\Log\LoggerInterface $logger
+     */
+    public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, LoggerInterface $logger)
+    {
+        $this->monorepoRoot = $monorepoRoot;
+        $this->monorepoVersionGuesser = $monorepoVersionGuesser;
+        $this->configuration = $configuration;
+        $this->loader = $loader;
+        $this->process = $process;
+        $this->logger = $logger;
+
+        parent::__construct();
+    }
+
+    /**
+     * Disables the repository handler.
+     *
+     * @param string $reason
+     *   Explanation why the repository handler got disabled.
+     */
+    public function disable(string $reason): void
+    {
+        $this->enabled = false;
+        $this->logger->info($reason);
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @see \Composer\Repository\PathRepository::initialize()
+     */
+    protected function initialize(): void
+    {
+        parent::initialize();
+
+        if ($this->enabled) {
+            $output = '';
+            $packageDistReference = null;
+            if (0 === $this->process->execute('git log -n1 --pretty=%H', $output, $this->monorepoRoot)) {
+                $packageDistReference = trim($output);
+            }
+
+            foreach ($this->getPackageRoots() as $packageRoot) {
+                $composerFilePath = $packageRoot . DIRECTORY_SEPARATOR . 'composer.json';
+
+                $json = file_get_contents($composerFilePath);
+                $package_data = JsonFile::parseJson($json, $composerFilePath);
+                $package_data['dist'] = [
+                    'type' => 'path',
+                    'url' => $packageRoot,
+                    'reference' => sha1($json),
+                ];
+
+                // Prefer symlinking instead of copying if the environment variable is not set.
+                $package_data['transport-options'] = ['symlink' => false === getenv('COMPOSER_MIRROR_PATH_REPOS') ? true : !(bool) getenv('COMPOSER_MIRROR_PATH_REPOS')];
+                $package_data['version'] = $this->monorepoVersionGuesser->getPackageVersion($package_data, $packageRoot);
+
+                if ($packageDistReference) {
+                    $package_data['dist']['reference'] = trim($output);
+                }
+
+                /* @var \Composer\Package\Package $package */
+                try {
+                    $package = $this->loader->load($package_data);
+                } catch (\Exception $e) {
+                    // \Composer\Package\Loader\ArrayLoader::load() can thrown an exception even if it is not defined
+                    // in the interface.
+                    $this->logger->error('Unable to load package data from {file} file. Error: {error}.', ['file' => $composerFilePath, 'error' => $e->getMessage()]);
+                    continue;
+                }
+                $this->addPackage($package);
+                $this->logger->info('Added {package} {type} as {version} version from the monorepo.', ['package' => $package->getPrettyName(), 'type' => $package->getType(), 'version' => $package->getPrettyVersion()]);
+            }
+        }
+    }
+
+    /**
+     * Get a list of all subpackage directories.
+     *
+     * @return \Generator
+     *   Array of subpackage directories.
+     */
+    private function getPackageRoots(): \Generator
+    {
+        $finder = new Finder();
+        $projects = $finder
+            ->in($this->monorepoRoot)
+            ->depth("<= {$this->configuration->getMaxDiscoveryDepth()}")
+            ->notPath('vendor')
+            ->files()->name('composer.json');
+
+        // BC compatibility with symfony/finder 3.4 where noPath() only accepted a string.
+        foreach ($this->configuration->getExcludedDirectories() as $excludedDirectory) {
+            $projects->notPath($excludedDirectory);
+        }
+
+        foreach ($projects as $project) {
+            /* @var $project \SplFileInfo */
+            yield $project->getPath();
+        }
+    }
+}
