@@ -104,7 +104,7 @@ final class MonorepoVersionGuesser
      */
     public function getPackageVersion(array $package_data, string $packageRoot): string
     {
-        // If package's composer.json does not define the version.
+        // If package's composer.json defines the version bail out early.
         if (isset($package_data['version'])) {
             return $package_data['version'];
         }
@@ -182,62 +182,62 @@ final class MonorepoVersionGuesser
     {
         $latest_semver_tag = null;
         $output = '';
-        if ($this->configuration->isOfflineMode() || 0 === $this->process->execute('git fetch origin', $output, $this->monorepoRoot)) {
-            // Proper sorting is possible for local and remote tags like this.
-            // "suffix=-" prevents 2.0-rc listed "after" 2.0
-            if (0 === $this->process->execute("git -c 'versionsort.suffix=-' for-each-ref --sort='-version:refname' --format='%(refname:short)' refs/tags", $output)) {
-                if (empty(trim($output))) {
-                    $this->logger->info('No tag found in the local repository.');
+        // Try to fetch the remove origin firsts if offline mode is not enabled.
+        if (!$this->configuration->isOfflineMode() && 0 !== $this->process->execute('git fetch origin', $output, $this->monorepoRoot)) {
+            $this->logger->critical('Unable to fetch remote origin. Error: {error}', ['error' => $this->process->getErrorOutput()]);
+        }
+
+        // Proper sorting is possible for local and remote tags like this.
+        // "suffix=-" prevents 2.0-rc listed "after" 2.0
+        if (0 === $this->process->execute("git -c 'versionsort.suffix=-' for-each-ref --sort='-version:refname' --format='%(refname:short)' refs/tags", $output)) {
+            if (empty(trim($output))) {
+                $this->logger->info('No tag found in the local repository.');
+            } else {
+                $sorted_local_remote_tags = $this->process->splitLines($output);
+                $this->logger->info('The following local and remote tags found: {tags}.', ['tags' => implode(', ', $sorted_local_remote_tags)]);
+                if ($this->configuration->isOfflineMode()) {
+                    $remote_only_tags = $sorted_local_remote_tags;
                 } else {
-                    $sorted_local_remote_tags = $this->process->splitLines($output);
-                    $this->logger->info('The following local and remote tags found: {tags}.', ['tags' => implode(', ', $sorted_local_remote_tags)]);
-                    if ($this->configuration->isOfflineMode()) {
-                        $remote_only_tags = $sorted_local_remote_tags;
-                        $this->logger->warning('Offline mode is active.');
+                    // But (proper) sorting is not possible if we would like to list remote tags _only_.
+                    // Also we purposefully do not check the exit code of this process because it does
+                    // not provide additional information.https://git-scm.com/docs/git-ls-remote.html
+                    $this->process->execute('git ls-remote -t --refs --exit-code origin', $output, $this->monorepoRoot);
+
+                    if (empty(trim($output))) {
+                        $message = 'No tags found on remote origin.';
+                        if (!empty($sorted_local_remote_tags)) {
+                            $message .= ' All tags found earlier were local only.';
+                        }
+                        $this->logger->info($message);
+
+                        // We return null here because if someone would like to use the local only tags
+                        //then they should enable the offline tags.
+                        return null;
                     } else {
-                        // But (proper) sorting is not possible if we would like to list remote tags _only_.
-                        // Also we purposefully do not check the exit code of this process because it does
-                        // not provide additional information.https://git-scm.com/docs/git-ls-remote.html
-                        $this->process->execute('git ls-remote -t --refs --exit-code origin', $output, $this->monorepoRoot);
+                        $unsorted_remote_tags_only = array_map(static function (string $line) {
+                            [, $ref] = preg_split('/\s+/', $line);
+                            [, , $tag] = explode('/', $ref);
 
-                        if (empty(trim($output))) {
-                            $message = 'No tags found on remote origin.';
-                            if (!empty($sorted_local_remote_tags)) {
-                                $message .= ' All tags found earlier were local only.';
-                            }
-                            $this->logger->info($message);
-
-                            // We return null here because if someone would like to use the local only tags
-                            //then they should enable the offline tags.
-                            return null;
-                        } else {
-                            $unsorted_remote_tags_only = array_map(static function (string $line) {
-                                [, $ref] = preg_split('/\s+/', $line);
-                                [, , $tag] = explode('/', $ref);
-
-                                return $tag;
-                            }, $this->process->splitLines($output));
-                            $remote_only_tags = array_intersect($sorted_local_remote_tags, $unsorted_remote_tags_only);
-                            $this->logger->info('The following tags found on remote origin: {tags}.', ['tags' => implode(', ', $remote_only_tags)]);
-                        }
+                            return $tag;
+                        }, $this->process->splitLines($output));
+                        $remote_only_tags = array_intersect($sorted_local_remote_tags, $unsorted_remote_tags_only);
+                        $this->logger->info('The following tags found on remote origin: {tags}.', ['tags' => implode(', ', $remote_only_tags)]);
                     }
+                }
 
-                    // Find the latest semantic versioning tag on the remote. Array is already in a descending
-                    // order.
-                    foreach ($remote_only_tags as $remote_only_tag) {
-                        try {
-                            new version($remote_only_tag);
-                            $latest_semver_tag = $remote_only_tag;
-                            $this->logger->info("'{tag}' is the highest semantic versioning tag in remote origin.", ['tag' => $latest_semver_tag]);
-                            break;
-                        } catch (\Exception $e) {
-                            $this->logger->info("Skipping '{tag}' remote tag because it is not a valid semantic versioning tag.", ['tag' => $remote_only_tag]);
-                        }
+                // Find the latest semantic versioning tag on the remote. Array is already in a descending
+                // order.
+                foreach ($remote_only_tags as $remote_only_tag) {
+                    try {
+                        new version($remote_only_tag);
+                        $latest_semver_tag = $remote_only_tag;
+                        $this->logger->info("'{tag}' is the highest semantic versioning tag in remote origin.", ['tag' => $latest_semver_tag]);
+                        break;
+                    } catch (\Exception $e) {
+                        $this->logger->info("Skipping '{tag}' remote tag because it is not a valid semantic versioning tag.", ['tag' => $remote_only_tag]);
                     }
                 }
             }
-        } else {
-            $this->logger->critical('Unable to fetch remote origin. Error: {error}', ['error' => $this->process->getErrorOutput()]);
         }
 
         return $latest_semver_tag;

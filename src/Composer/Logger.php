@@ -24,6 +24,7 @@ declare(strict_types=1);
 namespace Pronovix\MonorepoHelper\Composer;
 
 use Composer\IO\IOInterface;
+use Pronovix\ComposerLogger\Logger as ComposerLogger;
 use Psr\Log\AbstractLogger;
 
 /**
@@ -41,7 +42,7 @@ final class Logger extends AbstractLogger
      */
     public function __construct(IOInterface $io)
     {
-        $this->decorated = new \Pronovix\ComposerLogger\Logger('Monorepo Helper', $io);
+        $this->decorated = new ComposerLogger('Monorepo Helper', $io);
     }
 
     /**

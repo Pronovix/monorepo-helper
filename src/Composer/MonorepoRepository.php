@@ -115,6 +115,10 @@ final class MonorepoRepository extends ArrayRepository
         parent::initialize();
 
         if ($this->enabled) {
+            if ($this->configuration->isOfflineMode()) {
+                $this->logger->warning('Offline mode is active.');
+            }
+
             $output = '';
             $packageDistReference = null;
             if (0 === $this->process->execute('git log -n1 --pretty=%H', $output, $this->monorepoRoot)) {
