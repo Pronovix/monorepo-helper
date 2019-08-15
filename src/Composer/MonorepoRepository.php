@@ -125,6 +125,12 @@ final class MonorepoRepository extends ArrayRepository
                 $packageDistReference = trim($output);
             }
 
+            // Prefer symlinking instead of copying if the environment variable is not set.
+            $transport_as_symlink = false === getenv('COMPOSER_MIRROR_PATH_REPOS') ? true : !(bool) getenv('COMPOSER_MIRROR_PATH_REPOS');
+            if (false === $transport_as_symlink) {
+                $this->logger->warning('Packages are going to be copied instead of symlinked.');
+            }
+
             foreach ($this->getPackageRoots() as $packageRoot) {
                 $composerFilePath = $packageRoot . DIRECTORY_SEPARATOR . 'composer.json';
 
@@ -136,8 +142,7 @@ final class MonorepoRepository extends ArrayRepository
                     'reference' => sha1($json),
                 ];
 
-                // Prefer symlinking instead of copying if the environment variable is not set.
-                $package_data['transport-options'] = ['symlink' => false === getenv('COMPOSER_MIRROR_PATH_REPOS') ? true : !(bool) getenv('COMPOSER_MIRROR_PATH_REPOS')];
+                $package_data['transport-options'] = ['symlink' => $transport_as_symlink];
                 $package_data['version'] = $this->monorepoVersionGuesser->getPackageVersion($package_data, $packageRoot);
 
                 if ($packageDistReference) {
