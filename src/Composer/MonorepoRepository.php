@@ -181,7 +181,7 @@ final class MonorepoRepository extends ArrayRepository
 
         // BC compatibility with symfony/finder 3.4 where noPath() only accepted a string.
         foreach ($this->configuration->getExcludedDirectories() as $excludedDirectory) {
-            $projects->notPath($excludedDirectory);
+            $projects->exclude($excludedDirectory);
         }
 
         foreach ($projects as $project) {
