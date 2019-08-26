@@ -2,6 +2,11 @@
     "name": "pronovix/monorepo-helper",
     "type": "composer-plugin",
     "description": "Monorepo helper Composer plugin.",
+    "keywords": [
+        "Composer",
+        "monorepo",
+        "utility"
+    ],
     "license": "GPL-2.0-or-later",
     "require": {
         "composer-plugin-api": "^1.1",
