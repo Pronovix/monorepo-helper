@@ -102,8 +102,9 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
         }
 
         $versionParser = new VersionParser();
-        $monorepoVersionGuesser = new MonorepoVersionGuesser($monorepoRoot, new VersionGuesser($composer->getConfig(), $process, $versionParser), $process, $configuration, $logger);
-        $this->repository = new MonorepoRepository($monorepoRoot, $configuration, new ArrayLoader($versionParser, true), $process, $monorepoVersionGuesser, $logger);
+        $composerVersionGuesser = new VersionGuesser($composer->getConfig(), $process, $versionParser);
+        $monorepoVersionGuesser = new MonorepoVersionGuesser($monorepoRoot, $composerVersionGuesser, $process, $configuration, $logger);
+        $this->repository = new MonorepoRepository($monorepoRoot, $configuration, new ArrayLoader($versionParser, true), $process, $monorepoVersionGuesser, $composerVersionGuesser, $logger);
         // This ensures that the monorepo repository provides trumps both Packagist and Drupal packagist, so even if
         // the same version is available in multiple repositories the monorepo versions wins. Well, this is not entirely
         // true, it wins for dev versions but for >= alpha versions a different rule applies. See more details in

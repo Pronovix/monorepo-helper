@@ -25,6 +25,7 @@ namespace Pronovix\MonorepoHelper\Composer;
 
 use Composer\Json\JsonFile;
 use Composer\Package\Loader\LoaderInterface;
+use Composer\Package\Version\VersionGuesser;
 use Composer\Repository\ArrayRepository;
 use Composer\Util\ProcessExecutor;
 use Psr\Log\LoggerInterface;
@@ -72,6 +73,11 @@ final class MonorepoRepository extends ArrayRepository
     private $monorepoVersionGuesser;
 
     /**
+     * @var \Composer\Package\Version\VersionGuesser
+     */
+    private $composerVersionGuesser;
+
+    /**
      * MonorepoRepository constructor.
      *
      * @param string $monorepoRoot
@@ -79,15 +85,17 @@ final class MonorepoRepository extends ArrayRepository
      * @param \Composer\Package\Loader\LoaderInterface $loader
      * @param \Composer\Util\ProcessExecutor $process
      * @param \Pronovix\MonorepoHelper\Composer\MonorepoVersionGuesser $monorepoVersionGuesser
+     * @param \Composer\Package\Version\VersionGuesser $composerVersionGuesser
      * @param \Psr\Log\LoggerInterface $logger
      */
-    public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, LoggerInterface $logger)
+    public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, VersionGuesser $composerVersionGuesser, LoggerInterface $logger)
     {
         $this->monorepoRoot = $monorepoRoot;
-        $this->monorepoVersionGuesser = $monorepoVersionGuesser;
         $this->configuration = $configuration;
         $this->loader = $loader;
         $this->process = $process;
+        $this->monorepoVersionGuesser = $monorepoVersionGuesser;
+        $this->composerVersionGuesser = $composerVersionGuesser;
         $this->logger = $logger;
 
         parent::__construct();
@@ -141,25 +149,48 @@ final class MonorepoRepository extends ArrayRepository
                     'url' => $packageRoot,
                     'reference' => sha1($json),
                 ];
-
                 $package_data['transport-options'] = ['symlink' => $transport_as_symlink];
-                $package_data['version'] = $this->monorepoVersionGuesser->getPackageVersion($package_data, $packageRoot);
 
-                if ($packageDistReference) {
-                    $package_data['dist']['reference'] = trim($output);
+                $package_versions_to_register = [];
+                // The default version guesser is going to guess based on VCS.
+                $composerVersionGuess = $this->composerVersionGuesser->guessVersion($package_data, $packageRoot);
+                if (isset($composerVersionGuess['feature_pretty_version'])) {
+                    $composerPrettyVersionGuess = $composerVersionGuess['feature_pretty_version'];
+                } elseif (isset($composerVersionGuess['pretty_version'])) {
+                    $composerPrettyVersionGuess = $composerVersionGuess['pretty_version'];
+                }
+                // This resolves the aliasing problem of the "master" branch. Master branch (among some others) is not
+                // considered as feature branch therefore it always gets a special care.
+                // @see \Composer\Semver\VersionParser::normalizeBranch()
+                // @see \Composer\Semver\VersionParser::normalize()
+                if (isset($composerPrettyVersionGuess)) {
+                    // Register the unmodified feature pretty version as an available package version.
+                    $package_versions_to_register[] = $composerPrettyVersionGuess;
+                    if (false === strpos($composerPrettyVersionGuess, 'dev-') && isset($package_data['extra']['branch-alias'][$composerPrettyVersionGuess])) {
+                        $package_versions_to_register[] = $package_data['extra']['branch-alias'][$composerPrettyVersionGuess];
+                    }
                 }
 
-                /* @var \Composer\Package\Package $package */
-                try {
-                    $package = $this->loader->load($package_data);
-                } catch (\Exception $e) {
-                    // \Composer\Package\Loader\ArrayLoader::load() can thrown an exception even if it is not defined
-                    // in the interface.
-                    $this->logger->error('Unable to load package data from {file} file. Error: {error}.', ['file' => $composerFilePath, 'error' => $e->getMessage()]);
-                    continue;
+                $package_versions_to_register[] = $this->monorepoVersionGuesser->getPackageVersion($package_data, $packageRoot);
+
+                foreach ($package_versions_to_register as $version) {
+                    $package_data['version'] = $version;
+                    if ($packageDistReference) {
+                        $package_data['dist']['reference'] = trim($output);
+                    }
+
+                    /* @var \Composer\Package\Package $package */
+                    try {
+                        $package = $this->loader->load($package_data);
+                    } catch (\Exception $e) {
+                        // \Composer\Package\Loader\ArrayLoader::load() can thrown an exception even if it is not defined
+                        // in the interface.
+                        $this->logger->error('Unable to load package data from {file} file. Error: {error}.', ['file' => $composerFilePath, 'error' => $e->getMessage()]);
+                        continue;
+                    }
+                    $this->addPackage($package);
+                    $this->logger->info('Added {package} {type} as {version} version from the monorepo.', ['package' => $package->getPrettyName(), 'type' => $package->getType(), 'version' => $package->getPrettyVersion()]);
                 }
-                $this->addPackage($package);
-                $this->logger->info('Added {package} {type} as {version} version from the monorepo.', ['package' => $package->getPrettyName(), 'type' => $package->getType(), 'version' => $package->getPrettyVersion()]);
             }
         }
     }
