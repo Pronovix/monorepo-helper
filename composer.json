@@ -10,7 +10,7 @@
     "license": "GPL-2.0-or-later",
     "require": {
         "composer-plugin-api": "^1.1",
-        "pronovix/composer-logger": "^2.0",
+        "pronovix/composer-logger": "^2.8",
         "symfony/finder": "^3.4 || ^4.0",
         "vierbergenlars/php-semver": "^3.0.2"
     },
