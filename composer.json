@@ -9,15 +9,14 @@
     ],
     "license": "GPL-2.0-or-later",
     "require": {
-        "composer-plugin-api": "^1.1",
+        "composer-plugin-api": "^1.1 || ^2.0",
         "pronovix/composer-logger": "^2.8",
         "symfony/finder": "^3.4 || ^4.0",
         "vierbergenlars/php-semver": "^3.0.2"
     },
     "require-dev": {
-        "composer/composer": "^1.7.3",
-        "friendsofphp/php-cs-fixer": "^2.15",
-        "vimeo/psalm": "^3.4"
+        "composer/composer": "^1.7.3 || ^2.0",
+        "friendsofphp/php-cs-fixer": "^2.15"
     },
     "config": {
         "sort-packages": true
