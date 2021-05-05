@@ -25,6 +25,7 @@ namespace Pronovix\MonorepoHelper\Composer;
 
 use Composer\Json\JsonFile;
 use Composer\Package\Loader\LoaderInterface;
+use Composer\Package\RootPackageInterface;
 use Composer\Package\Version\VersionGuesser;
 use Composer\Repository\ArrayRepository;
 use Composer\Util\ProcessExecutor;
@@ -78,6 +79,11 @@ final class MonorepoRepository extends ArrayRepository
     private $composerVersionGuesser;
 
     /**
+     * @var \Composer\Package\RootPackageInterface
+     */
+    private $rootPackage;
+
+    /**
      * MonorepoRepository constructor.
      *
      * @param string $monorepoRoot
@@ -88,7 +94,7 @@ final class MonorepoRepository extends ArrayRepository
      * @param \Composer\Package\Version\VersionGuesser $composerVersionGuesser
      * @param \Psr\Log\LoggerInterface $logger
      */
-    public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, VersionGuesser $composerVersionGuesser, LoggerInterface $logger)
+    public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, VersionGuesser $composerVersionGuesser, RootPackageInterface $rootPackage, LoggerInterface $logger)
     {
         $this->monorepoRoot = $monorepoRoot;
         $this->configuration = $configuration;
@@ -96,6 +102,7 @@ final class MonorepoRepository extends ArrayRepository
         $this->process = $process;
         $this->monorepoVersionGuesser = $monorepoVersionGuesser;
         $this->composerVersionGuesser = $composerVersionGuesser;
+        $this->rootPackage = $rootPackage;
         $this->logger = $logger;
 
         parent::__construct();
@@ -151,7 +158,13 @@ final class MonorepoRepository extends ArrayRepository
                 ];
                 $package_data['transport-options'] = ['symlink' => $transport_as_symlink];
 
-                $package_versions_to_register = [];
+                $package_versions_to_register = [
+                  // Register the root package's version as one available version.
+                  // It could happen that the latest tag in the repo (and the next one) is
+                  // one or more major versions ahead than the current root package version.
+                  // E.g.: root package version is 2.x-dev but the latest tag is >= 3.0.0-alpha1.
+                  $this->rootPackage->getVersion(),
+                ];
                 // The default version guesser is going to guess based on VCS.
                 $composerVersionGuess = $this->composerVersionGuesser->guessVersion($package_data, $packageRoot);
                 if (isset($composerVersionGuess['feature_pretty_version'])) {
