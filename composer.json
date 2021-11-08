@@ -9,7 +9,7 @@
     ],
     "license": "GPL-2.0-or-later",
     "require": {
-        "php": "^7.3.0",
+        "php": "^7.4.0",
         "composer-plugin-api": "^1.1 || ^2.0",
         "pronovix/composer-logger": "^3.0",
         "symfony/finder": "^3.4 || ^4.0",
