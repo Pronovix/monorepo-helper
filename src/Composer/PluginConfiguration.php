@@ -67,7 +67,7 @@ final class PluginConfiguration
         $this->offlineMode = (bool) ($monorepo_helper['offline-mode'] ?? false === getenv('PRONOVIX_MONOREPO_HELPER_OFFLINE_MODE') ? false : (bool) getenv('PRONOVIX_MONOREPO_HELPER_OFFLINE_MODE'));
         // 0 as max discovery depth is not valid.
         $this->maxDiscoveryDepth = (int) ($monorepo_helper['max-discover-depth'] ?? getenv('PRONOVIX_MONOREPO_HELPER_MAX_DISCOVERY_DEPTH')) ?: self::DEFAULT_PACKAGE_DISCOVERY_DEPTH;
-        $this->excludedDirectories = is_array($monorepo_helper['excluded-directories'] ?? null) ? $monorepo_helper['excluded-directories'] : false === getenv('PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES') ? [] : explode(',', getenv('PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES'));
+        $this->excludedDirectories = (is_array($monorepo_helper['excluded-directories'] ?? null) ? $monorepo_helper['excluded-directories'] : false === getenv('PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES')) ? [] : explode(',', getenv('PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES'));
         $this->forcedMonorepoRoot = ($monorepo_helper['monorepo-root'] ?? null) ?? (false === getenv('PRONOVIX_MONOREPO_HELPER_MONOREPO_ROOT') ? null : getenv('PRONOVIX_MONOREPO_HELPER_MONOREPO_ROOT'));
     }
 
