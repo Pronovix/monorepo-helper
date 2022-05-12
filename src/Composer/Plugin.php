@@ -33,7 +33,6 @@ use Composer\Plugin\CommandEvent;
 use Composer\Plugin\PluginEvents;
 use Composer\Plugin\PluginInterface;
 use Composer\Util\Filesystem as ComposerFilesystem;
-use Composer\Util\ProcessExecutor;
 
 /**
  * Monorepo Helper plugin definition.
@@ -74,7 +73,7 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
             return;
         }
 
-        $process = new ProcessExecutor($io);
+        $process = $composer->getLoop()->getProcessExecutor();
         $monorepoRoot = $configuration->getForcedMonorepoRoot();
         $output = '';
 
