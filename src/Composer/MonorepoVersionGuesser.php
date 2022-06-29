@@ -158,7 +158,7 @@ final class MonorepoVersionGuesser
                         ++$matches[2];
 
                         return implode('', $matches);
-                    }, $prerelease[0]);
+                    }, (string) $prerelease[0]);
                     $this->_nextVersion = "{$version->getMajor()}.{$version->getMinor()}.{$version->getPatch()}-{$next_pre_release}";
                 } else {
                     $this->_nextVersion = $version->inc('patch')->getVersion();
