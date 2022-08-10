@@ -26,7 +26,7 @@ namespace Pronovix\MonorepoHelper\Composer;
 use Composer\Package\Version\VersionGuesser;
 use Composer\Util\ProcessExecutor;
 use Psr\Log\LoggerInterface;
-use vierbergenlars\SemVer\version;
+use PHLAK\SemVer\Version;
 
 /**
  * Guesses package versions inside the monorepo.
@@ -148,8 +148,8 @@ final class MonorepoVersionGuesser
         if (null === $this->_nextVersion) {
             $latest_semver_tag = $this->getLatestSemanticVersionGitTag();
             if (null !== $latest_semver_tag) {
-                $version = new version($latest_semver_tag);
-                if ($prerelease = $version->getPrerelease()) {
+                $version = new Version($latest_semver_tag);
+                if ($prerelease = $version->preRelease) {
                     // Manually calculate next pre-release tag, because $version->inc('prerelease'); creates
                     // "alpha1.0" from "alpha1".
                     $next_pre_release = preg_replace_callback('/^([^0-9]*)([0-9]+)$/', function (array $matches) {
@@ -158,10 +158,10 @@ final class MonorepoVersionGuesser
                         ++$matches[2];
 
                         return implode('', $matches);
-                    }, (string) $prerelease[0]);
-                    $this->_nextVersion = "{$version->getMajor()}.{$version->getMinor()}.{$version->getPatch()}-{$next_pre_release}";
+                    }, (string) $prerelease);
+                    $this->_nextVersion = "{$version->major}.{$version->minor}.{$version->patch}-{$next_pre_release}";
                 } else {
-                    $this->_nextVersion = $version->inc('patch')->getVersion();
+                    $this->_nextVersion = (string) $version->incrementPatch();
                 }
                 $this->logger->info("'{version}' is the next semantic version for all packages inside the monorepo.", ['version' => $this->_nextVersion]);
             } else {
@@ -229,7 +229,7 @@ final class MonorepoVersionGuesser
                 // order.
                 foreach ($remote_only_tags as $remote_only_tag) {
                     try {
-                        new version($remote_only_tag);
+                        new Version($remote_only_tag);
                         $latest_semver_tag = $remote_only_tag;
                         $this->logger->info("'{tag}' is the highest semantic versioning tag in remote origin.", ['tag' => $latest_semver_tag]);
                         break;
