@@ -140,7 +140,7 @@ final class MonorepoVersionGuesser
      * Gets the next semantic version for all packages inside the monorepo.
      *
      * @return bool|string
-     *   The next semantic version string or FALSE if the the latest semantic versioning tag could not be identified
+     *   The next semantic version string or FALSE if the latest semantic versioning tag could not be identified
      *   on remote origin.
      */
     private function getNextSemanticVersion()
@@ -152,7 +152,7 @@ final class MonorepoVersionGuesser
                 if ($prerelease = $version->preRelease) {
                     // Manually calculate next pre-release tag, because $version->inc('prerelease'); creates
                     // "alpha1.0" from "alpha1".
-                    $next_pre_release = preg_replace_callback('/^([^0-9]*)([0-9]+)$/', function (array $matches) {
+                    $next_pre_release = preg_replace_callback('/^([^0-9]*)([0-9]+)$/', static function (array $matches) {
                         unset($matches[0]);
                         $matches[2] = (int) $matches[2];
                         ++$matches[2];
