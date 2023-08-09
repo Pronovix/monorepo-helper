@@ -86,13 +86,8 @@ final class MonorepoRepository extends ArrayRepository
     /**
      * MonorepoRepository constructor.
      *
-     * @param string $monorepoRoot
      * @param \Pronovix\MonorepoHelper\Composer\PluginConfiguration $configuration
-     * @param \Composer\Package\Loader\LoaderInterface $loader
-     * @param \Composer\Util\ProcessExecutor $process
      * @param \Pronovix\MonorepoHelper\Composer\MonorepoVersionGuesser $monorepoVersionGuesser
-     * @param \Composer\Package\Version\VersionGuesser $composerVersionGuesser
-     * @param \Psr\Log\LoggerInterface $logger
      */
     public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, VersionGuesser $composerVersionGuesser, RootPackageInterface $rootPackage, LoggerInterface $logger)
     {
@@ -121,8 +116,6 @@ final class MonorepoRepository extends ArrayRepository
     }
 
     /**
-     * @inheritDoc
-     *
      * @see \Composer\Repository\PathRepository::initialize()
      */
     protected function initialize(): void

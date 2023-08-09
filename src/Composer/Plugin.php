@@ -44,9 +44,6 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
      */
     private $repository;
 
-    /**
-     * @inheritDoc
-     */
     public function activate(Composer $composer, IOInterface $io): void
     {
         // On global installations, if the pronovix/composer-logger library
@@ -111,23 +108,14 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
         $composer->getRepositoryManager()->prependRepository($this->repository);
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function deactivate(Composer $composer, IOInterface $io)
+    public function deactivate(Composer $composer, IOInterface $io): void
     {
     }
 
-    /**
-     * @inheritDoc
-     */
-    public function uninstall(Composer $composer, IOInterface $io)
+    public function uninstall(Composer $composer, IOInterface $io): void
     {
     }
 
-    /**
-     * @inheritDoc
-     */
     public static function getSubscribedEvents(): array
     {
         return [
@@ -139,8 +127,6 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
 
     /**
      * Reacts to Composer commands.
-     *
-     * @param \Composer\Plugin\CommandEvent $event
      */
     public function onCommand(CommandEvent $event): void
     {

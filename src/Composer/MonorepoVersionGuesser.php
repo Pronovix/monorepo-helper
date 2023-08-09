@@ -25,8 +25,8 @@ namespace Pronovix\MonorepoHelper\Composer;
 
 use Composer\Package\Version\VersionGuesser;
 use Composer\Util\ProcessExecutor;
-use Psr\Log\LoggerInterface;
 use PHLAK\SemVer\Version;
+use Psr\Log\LoggerInterface;
 
 /**
  * Guesses package versions inside the monorepo.
@@ -76,11 +76,7 @@ final class MonorepoVersionGuesser
     /**
      * MonorepoVersionGuesser constructor.
      *
-     * @param string $monorepoRoot
-     * @param \Composer\Package\Version\VersionGuesser $versionGuesser
-     * @param \Composer\Util\ProcessExecutor $process
      * @param \Pronovix\MonorepoHelper\Composer\PluginConfiguration $configuration
-     * @param \Psr\Log\LoggerInterface $logger
      */
     public function __construct(string $monorepoRoot, VersionGuesser $versionGuesser, ProcessExecutor $process, PluginConfiguration $configuration, LoggerInterface $logger)
     {
@@ -211,7 +207,7 @@ final class MonorepoVersionGuesser
                         $this->logger->info($message);
 
                         // We return null here because if someone would like to use the local only tags
-                        //then they should enable the offline tags.
+                        // then they should enable the offline tags.
                         return null;
                     } else {
                         $unsorted_remote_tags_only = array_map(static function (string $line) {

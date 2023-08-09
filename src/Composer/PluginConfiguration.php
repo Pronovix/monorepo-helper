@@ -55,8 +55,6 @@ final class PluginConfiguration
     /**
      * PluginConfiguration constructor.
      *
-     * @param \Composer\Composer $composer
-     *
      * @psalm-suppress PossiblyFalseArgument
      */
     public function __construct(Composer $composer)
@@ -84,8 +82,6 @@ final class PluginConfiguration
 
     /**
      * The maximum lookup depth from the monorepo's root for package discovery.
-     *
-     * @return int
      */
     public function getMaxDiscoveryDepth(): int
     {
@@ -94,8 +90,6 @@ final class PluginConfiguration
 
     /**
      * Enables/disables fetching changes from remote origin.
-     *
-     * @return bool
      */
     public function isOfflineMode(): bool
     {
@@ -106,8 +100,6 @@ final class PluginConfiguration
      * Enables/disables the plugin.
      *
      * It allows to disable the plugin in case of an error.
-     *
-     * @return bool
      */
     public function isEnabled(): bool
     {
@@ -116,8 +108,6 @@ final class PluginConfiguration
 
     /**
      * Non-validated enforced monorepo root.
-     *
-     * @return string|null
      */
     public function getForcedMonorepoRoot(): ?string
     {

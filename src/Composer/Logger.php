@@ -37,17 +37,11 @@ final class Logger extends AbstractLogger
      */
     private $decorated;
 
-    /**
-     * @inheritDoc
-     */
     public function __construct(IOInterface $io)
     {
         $this->decorated = new ComposerLogger('Monorepo Helper', $io);
     }
 
-    /**
-     * @inheritDoc
-     */
     public function log($level, $message, array $context = []): void
     {
         $this->decorated->log($level, $message, $context);
