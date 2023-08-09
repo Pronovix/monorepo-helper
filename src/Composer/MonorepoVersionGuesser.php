@@ -185,7 +185,7 @@ final class MonorepoVersionGuesser
 
         // Proper sorting is possible for local and remote tags like this.
         // "suffix=-" prevents 2.0-rc listed "after" 2.0
-        if (0 === $this->process->execute("git -c 'versionsort.suffix=-' for-each-ref --sort='-version:refname' --format='%(refname:short)' refs/tags", $output)) {
+        if (0 === $this->process->execute("git -c 'versionsort.suffix=-' for-each-ref --sort='-version:refname' --format='%(refname:short)' refs/tags", $output, $this->monorepoRoot)) {
             if (empty(trim($output))) {
                 $this->logger->info('No tag found in the local repository.');
             } else {

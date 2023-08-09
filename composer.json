@@ -13,7 +13,8 @@
         "composer-plugin-api": "^2.0",
         "pronovix/composer-logger": "^4.0",
         "symfony/finder": "^4.0 || ^6.2",
-        "phlak/semver": "^4.0"
+        "phlak/semver": "^4.0",
+        "symfony/filesystem": "^4.0 || ^6.2"
     },
     "require-dev": {
         "composer/composer": "^2.0",

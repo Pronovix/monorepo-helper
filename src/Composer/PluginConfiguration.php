@@ -108,6 +108,8 @@ final class PluginConfiguration
 
     /**
      * Non-validated enforced monorepo root.
+     *
+     * Could be an absolute or relative path reference.
      */
     public function getForcedMonorepoRoot(): ?string
     {

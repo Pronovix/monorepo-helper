@@ -25,6 +25,7 @@ namespace Pronovix\MonorepoHelper\Composer;
 
 use Composer\Composer;
 use Composer\EventDispatcher\EventSubscriberInterface;
+use Composer\Factory;
 use Composer\IO\IOInterface;
 use Composer\Package\Loader\ArrayLoader;
 use Composer\Package\Version\VersionGuesser;
@@ -32,7 +33,7 @@ use Composer\Package\Version\VersionParser;
 use Composer\Plugin\CommandEvent;
 use Composer\Plugin\PluginEvents;
 use Composer\Plugin\PluginInterface;
-use Composer\Util\Filesystem as ComposerFilesystem;
+use Symfony\Component\Filesystem\Path;
 
 /**
  * Monorepo Helper plugin definition.
@@ -46,16 +47,27 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
 
     public function activate(Composer $composer, IOInterface $io): void
     {
-        // On global installations, if the pronovix/composer-logger library
-        // has not been installed earlier then the install could fail because
-        // the autoloader has not been updated yet with the newly installed
-        // dependency.
+        // On installation, if these class dependencies have not been installed
+        // earlier then the installation process could fail because the autoloader
+        // has not been updated yet with the newly installed dependencies when
+        // activate() runs the first time.
+        // @see https://getcomposer.org/doc/articles/plugins.md#plugin-autoloading
         if (!class_exists('\Pronovix\ComposerLogger\Logger')) {
-            $loggerFile = $composer->getConfig()->get('vendor-dir') . '/pronovix/composer-logger/src/Logger.php';
-            if (file_exists($loggerFile)) {
-                require_once $loggerFile;
+            $loggerClassFile = $composer->getConfig()->get('vendor-dir') . '/pronovix/composer-logger/src/Logger.php';
+            if (file_exists($loggerClassFile)) {
+                require_once $loggerClassFile;
             } else {
-                $io->writeError('composer-logger was missing and it could not be autoloaded.');
+                $io->writeError('\Pronovix\ComposerLogger\Logger was missing and it could not be autoloaded.');
+
+                return;
+            }
+        }
+        if (!class_exists('\Symfony\Component\Filesystem\Path')) {
+            $SymfonyFileSystemPathClassFile = $composer->getConfig()->get('vendor-dir') . '/symfony/filesystem/Path.php';
+            if (file_exists($SymfonyFileSystemPathClassFile)) {
+                require_once $SymfonyFileSystemPathClassFile;
+            } else {
+                $io->writeError('\Symfony\Component\Filesystem\Path file could not be autoloaded.');
 
                 return;
             }
@@ -71,10 +83,10 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
         }
 
         $process = $composer->getLoop()->getProcessExecutor();
-        $monorepoRoot = $configuration->getForcedMonorepoRoot();
+        $monorepoRoot = null;
         $output = '';
 
-        if (null === $monorepoRoot) {
+        if (null === $configuration->getForcedMonorepoRoot()) {
             if (0 === $process->execute('git rev-parse --absolute-git-dir', $output)) {
                 $monorepoRoot = dirname(trim($output));
                 $logger->info('Detected monorepo root: {dir}', ['dir' => $monorepoRoot]);
@@ -86,11 +98,19 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
                 return;
             }
         } else {
-            $logger->warning('Forced monorepo root is {directory}.', ['directory' => $monorepoRoot]);
-            $filesystem = new ComposerFilesystem($process);
-            $monorepoRoot = $filesystem->normalizePath($filesystem->isAbsolutePath($monorepoRoot) ? $monorepoRoot : getcwd() . '/' . $monorepoRoot);
+            foreach ([dirname(realpath(Factory::getComposerFile())), $composer->getConfig()->get('home')] as $monorepoRootBasePathCandidates) {
+                $logger->debug('Monorepo base path candidate is {directory}.', ['directory' => $monorepoRootBasePathCandidates]);
+                $monorepoRoot = Path::makeAbsolute($configuration->getForcedMonorepoRoot(), $monorepoRootBasePathCandidates);
+                $logger->debug('Monorepo root candidate is {directory}.', ['directory' => $monorepoRoot]);
 
-            if (!is_dir($monorepoRoot . '/.git')) {
+                if (is_dir($monorepoRoot . '/.git')) {
+                    $logger->warning('Forced monorepo root is {directory}.', ['directory' => $monorepoRoot]);
+                    break;
+                }
+                $monorepoRoot = null;
+            }
+
+            if (null === $monorepoRoot) {
                 $logger->info('Plugin is disabled because forced monorepo root does not seem to be a valid GIT root.');
 
                 return;
