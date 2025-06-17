@@ -11,7 +11,7 @@
     "require": {
         "php": "~8.3.0",
         "composer-plugin-api": "^2.0",
-        "pronovix/composer-logger": "^4.0",
+        "pronovix/composer-logger": "^5.0",
         "symfony/finder": "^4.0 || ^6.2",
         "phlak/semver": "^4.0",
         "symfony/filesystem": "^4.0 || ^6.2"
