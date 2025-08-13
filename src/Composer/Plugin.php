@@ -119,9 +119,14 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
                 return;
             }
         } else {
-            foreach ([dirname(realpath(Factory::getComposerFile())), $composer->getConfig()->get('home')] as $monorepoRootBasePathCandidates) {
-                $this->logger->debug('Monorepo base path candidate is {directory}.', ['directory' => $monorepoRootBasePathCandidates]);
-                $monorepoRoot = Path::makeAbsolute($configuration->getForcedMonorepoRoot(), $monorepoRootBasePathCandidates);
+            $monorepoRootBasePathCandidates = [];
+            if (realpath(Factory::getComposerFile())) {
+                $monorepoRootBasePathCandidates[] = dirname(realpath(Factory::getComposerFile()));
+            }
+            $monorepoRootBasePathCandidates[] = $composer->getConfig()->get('home');
+            foreach ($monorepoRootBasePathCandidates as $monorepoRootBasePathCandidate) {
+                $this->logger->debug('Monorepo base path candidate is {directory}.', ['directory' => $monorepoRootBasePathCandidate]);
+                $monorepoRoot = Path::makeAbsolute($configuration->getForcedMonorepoRoot(), $monorepoRootBasePathCandidate);
                 $this->logger->debug('Monorepo root candidate is {directory}.', ['directory' => $monorepoRoot]);
 
                 if (is_dir($monorepoRoot . '/.git')) {
