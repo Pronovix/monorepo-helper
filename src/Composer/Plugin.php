@@ -59,6 +59,8 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
 
     private LoggerInterface $logger;
 
+    private PluginConfiguration $configuration;
+
     public function __construct()
     {
         // These are going to replaced with real objects in activate().
@@ -95,9 +97,9 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
         }
 
         $this->logger = new Logger($io);
-        $configuration = new PluginConfiguration($composer);
+        $this->configuration = new PluginConfiguration($composer);
 
-        if (!$configuration->isEnabled()) {
+        if (!$this->configuration->isEnabled()) {
             $this->logger->info('Plugin is configured to be disabled.');
 
             return;
@@ -107,7 +109,7 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
         $monorepoRoot = null;
         $output = '';
 
-        if (null === $configuration->getForcedMonorepoRoot()) {
+        if (null === $this->configuration->getForcedMonorepoRoot()) {
             if (0 === $process->execute('git rev-parse --absolute-git-dir', $output)) {
                 $monorepoRoot = dirname(trim($output));
                 $this->logger->info('Detected monorepo root: {dir}', ['dir' => $monorepoRoot]);
@@ -126,7 +128,7 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
             $monorepoRootBasePathCandidates[] = $composer->getConfig()->get('home');
             foreach ($monorepoRootBasePathCandidates as $monorepoRootBasePathCandidate) {
                 $this->logger->debug('Monorepo base path candidate is {directory}.', ['directory' => $monorepoRootBasePathCandidate]);
-                $monorepoRoot = Path::makeAbsolute($configuration->getForcedMonorepoRoot(), $monorepoRootBasePathCandidate);
+                $monorepoRoot = Path::makeAbsolute($this->configuration->getForcedMonorepoRoot(), $monorepoRootBasePathCandidate);
                 $this->logger->debug('Monorepo root candidate is {directory}.', ['directory' => $monorepoRoot]);
 
                 if (is_dir($monorepoRoot . '/.git')) {
@@ -146,8 +148,8 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
         $this->monorepoPath = $monorepoRoot;
         $versionParser = new VersionParser();
         $composerVersionGuesser = new VersionGuesser($composer->getConfig(), $process, $versionParser);
-        $monorepoVersionGuesser = new MonorepoVersionGuesser($monorepoRoot, $composerVersionGuesser, $process, $configuration, $this->logger);
-        $this->repository = new MonorepoRepository($monorepoRoot, $configuration, new ArrayLoader($versionParser, true), $process, $monorepoVersionGuesser, $composerVersionGuesser, $composer->getPackage(), $this->logger);
+        $monorepoVersionGuesser = new MonorepoVersionGuesser($monorepoRoot, $composerVersionGuesser, $process, $this->configuration, $this->logger);
+        $this->repository = new MonorepoRepository($monorepoRoot, $this->configuration, new ArrayLoader($versionParser, true), $process, $monorepoVersionGuesser, $composerVersionGuesser, $composer->getPackage(), $this->logger);
         // This ensures that the monorepo repository provides trumps both Packagist and Drupal packagist, so even if
         // the same version is available in multiple repositories the monorepo versions wins. Well, this is not entirely
         // true, it wins for dev versions but for >= alpha versions a different rule applies. See more details in
@@ -177,16 +179,25 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
 
     public function onPackageInstall(PackageEvent $event): void
     {
+        if (!$this->configuration->isEnabled()) {
+            return;
+        }
         $this->registerPackageWithFrontendAssetsInYarnWorkspaces($event);
     }
 
     public function onPackageUpdate(PackageEvent $event): void
     {
+        if (!$this->configuration->isEnabled()) {
+            return;
+        }
         $this->registerPackageWithFrontendAssetsInYarnWorkspaces($event);
     }
 
     public function onPackageUninstall(PackageEvent $event): void
     {
+        if (!$this->configuration->isEnabled()) {
+            return;
+        }
         $this->deregisterPackageWithFrontendAssetsFromYarnWorkspaces($event);
     }
 
@@ -195,6 +206,9 @@ final class Plugin implements PluginInterface, EventSubscriberInterface
      */
     public function onCommand(CommandEvent $event): void
     {
+        if (!$this->configuration->isEnabled()) {
+            return;
+        }
         if (null === $this->repository) {
             return;
         }
