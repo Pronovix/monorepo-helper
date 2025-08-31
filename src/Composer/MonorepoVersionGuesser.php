@@ -34,7 +34,7 @@ use Psr\Log\LoggerInterface;
 final class MonorepoVersionGuesser
 {
     /**
-     * @var \Composer\Package\Version\VersionGuesser
+     * @var VersionGuesser
      */
     private $versionGuesser;
 
@@ -52,17 +52,17 @@ final class MonorepoVersionGuesser
     private $_nextVersion;
 
     /**
-     * @var \Psr\Log\LoggerInterface
+     * @var LoggerInterface
      */
     private $logger;
 
     /**
-     * @var \Pronovix\MonorepoHelper\Composer\PluginConfiguration
+     * @var PluginConfiguration
      */
     private $configuration;
 
     /**
-     * @var \Composer\Util\ProcessExecutor
+     * @var ProcessExecutor
      */
     private $process;
 
@@ -75,8 +75,6 @@ final class MonorepoVersionGuesser
 
     /**
      * MonorepoVersionGuesser constructor.
-     *
-     * @param \Pronovix\MonorepoHelper\Composer\PluginConfiguration $configuration
      */
     public function __construct(string $monorepoRoot, VersionGuesser $versionGuesser, ProcessExecutor $process, PluginConfiguration $configuration, LoggerInterface $logger)
     {

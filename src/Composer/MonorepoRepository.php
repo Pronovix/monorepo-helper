@@ -45,12 +45,12 @@ final class MonorepoRepository extends ArrayRepository
     private $monorepoRoot;
 
     /**
-     * @var \Composer\Util\ProcessExecutor
+     * @var ProcessExecutor
      */
     private $process;
 
     /**
-     * @var \Composer\Package\Loader\LoaderInterface
+     * @var LoaderInterface
      */
     private $loader;
 
@@ -60,34 +60,31 @@ final class MonorepoRepository extends ArrayRepository
     private $enabled = true;
 
     /**
-     * @var \Pronovix\MonorepoHelper\Composer\Logger|\Psr\Log\LoggerInterface
+     * @var Logger|LoggerInterface
      */
     private $logger;
 
     /**
-     * @var \Pronovix\MonorepoHelper\Composer\PluginConfiguration
+     * @var PluginConfiguration
      */
     private $configuration;
     /**
-     * @var \Pronovix\MonorepoHelper\Composer\MonorepoVersionGuesser
+     * @var MonorepoVersionGuesser
      */
     private $monorepoVersionGuesser;
 
     /**
-     * @var \Composer\Package\Version\VersionGuesser
+     * @var VersionGuesser
      */
     private $composerVersionGuesser;
 
     /**
-     * @var \Composer\Package\RootPackageInterface
+     * @var RootPackageInterface
      */
     private $rootPackage;
 
     /**
      * MonorepoRepository constructor.
-     *
-     * @param \Pronovix\MonorepoHelper\Composer\PluginConfiguration $configuration
-     * @param \Pronovix\MonorepoHelper\Composer\MonorepoVersionGuesser $monorepoVersionGuesser
      */
     public function __construct(string $monorepoRoot, PluginConfiguration $configuration, LoaderInterface $loader, ProcessExecutor $process, MonorepoVersionGuesser $monorepoVersionGuesser, VersionGuesser $composerVersionGuesser, RootPackageInterface $rootPackage, LoggerInterface $logger)
     {
@@ -152,11 +149,11 @@ final class MonorepoRepository extends ArrayRepository
                 $package_data['transport-options'] = ['symlink' => $transport_as_symlink];
 
                 $package_versions_to_register = [
-                  // Register the root package's version as one available version.
-                  // It could happen that the latest tag in the repo (and the next one) is
-                  // one or more major versions ahead than the current root package version.
-                  // E.g.: root package version is 2.x-dev but the latest tag is >= 3.0.0-alpha1.
-                  $this->rootPackage->getVersion(),
+                    // Register the root package's version as one available version.
+                    // It could happen that the latest tag in the repo (and the next one) is
+                    // one or more major versions ahead than the current root package version.
+                    // E.g.: root package version is 2.x-dev but the latest tag is >= 3.0.0-alpha1.
+                    $this->rootPackage->getVersion(),
                 ];
                 // The default version guesser is going to guess based on VCS.
                 $composerVersionGuess = $this->composerVersionGuesser->guessVersion($package_data, $packageRoot);

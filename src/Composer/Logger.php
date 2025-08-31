@@ -33,7 +33,7 @@ use Psr\Log\AbstractLogger;
 final class Logger extends AbstractLogger
 {
     /**
-     * @var \Pronovix\ComposerLogger\Logger
+     * @var ComposerLogger
      */
     private $decorated;
 
