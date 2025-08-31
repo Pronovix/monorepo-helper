@@ -42,31 +42,52 @@ final class PluginConfiguration
     /** @var string[] */
     private $excludedDirectories;
 
-    /**
-     * @var bool
-     */
+    /** @var bool */
     private $enabled;
 
-    /**
-     * @var string|null
-     */
+    /** @var string|null */
     private $forcedMonorepoRoot;
 
     /**
      * PluginConfiguration constructor.
-     *
-     * @psalm-suppress PossiblyFalseArgument
      */
     public function __construct(Composer $composer)
     {
         $extra = $composer->getPackage()->getExtra();
         $monorepo_helper = $extra['monorepo-helper'] ?? [];
-        $this->enabled = (bool) ($monorepo_helper['enabled'] ?? false === getenv('PRONOVIX_MONOREPO_HELPER_ENABLED') ? true : (bool) getenv('PRONOVIX_MONOREPO_HELPER_ENABLED'));
-        $this->offlineMode = (bool) ($monorepo_helper['offline-mode'] ?? false === getenv('PRONOVIX_MONOREPO_HELPER_OFFLINE_MODE') ? false : (bool) getenv('PRONOVIX_MONOREPO_HELPER_OFFLINE_MODE'));
-        // 0 as max discovery depth is not valid.
-        $this->maxDiscoveryDepth = (int) ($monorepo_helper['max-discover-depth'] ?? getenv('PRONOVIX_MONOREPO_HELPER_MAX_DISCOVERY_DEPTH')) ?: self::DEFAULT_PACKAGE_DISCOVERY_DEPTH;
-        $this->excludedDirectories = (is_array($monorepo_helper['excluded-directories'] ?? null) ? $monorepo_helper['excluded-directories'] : false === getenv('PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES')) ? [] : explode(',', getenv('PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES'));
-        $this->forcedMonorepoRoot = ($monorepo_helper['monorepo-root'] ?? null) ?? (false === getenv('PRONOVIX_MONOREPO_HELPER_MONOREPO_ROOT') ? null : getenv('PRONOVIX_MONOREPO_HELPER_MONOREPO_ROOT'));
+
+        $this->enabled = $this->resolveBooleanConfig(
+            $monorepo_helper['enabled'] ?? null,
+            'PRONOVIX_MONOREPO_HELPER_ENABLED',
+            true
+        );
+
+        $this->offlineMode = $this->resolveBooleanConfig(
+            $monorepo_helper['offline-mode'] ?? null,
+            'PRONOVIX_MONOREPO_HELPER_OFFLINE_MODE',
+            false
+        );
+
+        $configDepth = $monorepo_helper['max-discover-depth'] ?? null;
+        $envDepth = getenv('PRONOVIX_MONOREPO_HELPER_MAX_DISCOVERY_DEPTH');
+
+        if (null !== $configDepth) {
+            $this->maxDiscoveryDepth = max(1, (int) $configDepth);
+        } elseif (false !== $envDepth && '' !== $envDepth) {
+            $this->maxDiscoveryDepth = max(1, (int) $envDepth);
+        } else {
+            $this->maxDiscoveryDepth = self::DEFAULT_PACKAGE_DISCOVERY_DEPTH;
+        }
+
+        $this->excludedDirectories = $this->resolveArrayConfig(
+            $monorepo_helper['excluded-directories'] ?? null,
+            'PRONOVIX_MONOREPO_HELPER_EXCLUDED_DIRECTORIES'
+        );
+
+        $this->forcedMonorepoRoot = $this->resolveStringConfig(
+            $monorepo_helper['monorepo-root'] ?? null,
+            'PRONOVIX_MONOREPO_HELPER_MONOREPO_ROOT'
+        );
     }
 
     /**
@@ -114,5 +135,57 @@ final class PluginConfiguration
     public function getForcedMonorepoRoot(): ?string
     {
         return $this->forcedMonorepoRoot;
+    }
+
+    /**
+     * Resolve boolean configuration with proper fallback logic.
+     * Accepts mixed types since JSON can contain strings like "true"/"false".
+     */
+    private function resolveBooleanConfig(mixed $configValue, string $envVar, bool $default): bool
+    {
+        if (null !== $configValue) {
+            return filter_var($configValue, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $envValue = getenv($envVar);
+        if (false !== $envValue && '' !== $envValue) {
+            return filter_var($envValue, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $default;
+    }
+
+    /**
+     * Resolve array configuration with proper fallback logic.
+     */
+    private function resolveArrayConfig(mixed $configValue, string $envVar): array
+    {
+        if (is_array($configValue)) {
+            return array_filter(array_map('trim', $configValue));
+        }
+
+        $envValue = getenv($envVar);
+        if (false !== $envValue && '' !== $envValue) {
+            return array_filter(array_map('trim', explode(',', $envValue)));
+        }
+
+        return [];
+    }
+
+    /**
+     * Resolve string configuration with proper fallback logic.
+     */
+    private function resolveStringConfig(mixed $configValue, string $envVar): ?string
+    {
+        if (null !== $configValue && '' !== $configValue) {
+            return (string) $configValue;
+        }
+
+        $envValue = getenv($envVar);
+        if (false !== $envValue && '' !== $envValue) {
+            return $envValue;
+        }
+
+        return null;
     }
 }
